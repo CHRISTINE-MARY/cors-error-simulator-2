@@ -1,8 +1,7 @@
 import React, { useRef, useState } from "react";
 import FrontendEditor from "./FrontendEditor";
 import BackendEditor from "./BackendEditor";
-import { runCode } from "./runFrontend";
-import { stat } from "fs";
+import "./App.css";
 
 export default function App() {
   const [frontendCode, setFrontendCode] =
@@ -23,30 +22,52 @@ def data():
     return {"msg": "Hello from Backend"}
 `);
 
+  const backend_url = process.env.REACT_APP_BACKEND_URL;
+  console.log("url",backend_url);
   const [backendUrl, setBackendUrl] = useState("");
-  
-  const [status,setStatus]=useState("Unknown");
+  const [frameWidth, setWidth] = useState(0);
+  const [status, setStatus] = useState("Unknown");
   const intervalRef = useRef<number | null>(null);
+  const [frontendBackUrl, setFrontendUrl] = useState("");
+  const [error, setError] = useState("");
   const run = async () => {
-    setStatus("Unknown")
+    setStatus("Unknown");
+
     const requestId = crypto.randomUUID();
     if (!backendUrl) {
-      alert("Enter backend URL!");
+      setError("Enter backend URL!");
+      return;
+    }
+    if (!frontendBackUrl) {
+      setError("enter valid url");
       return;
     }
 
     // Replace placeholder in frontend code
+    if (!frontendCode.includes(frontendBackUrl)) {
+      setError("Frontend URL not found in code!");
+      return;
+    }
+    const escapedUrl = frontendBackUrl.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // Escape regex chars
+    const regex = new RegExp(`${escapedUrl}(\/[^\s'"]*)?`, "g");
+
     const modifiedCode = frontendCode.replace(
-      /https:\/\/your-backend-url\.com(\/[^\s'"]*)?/g,
+      regex,
       (_, path = "") =>
-        `http://localhost:8080/proxy${path}?backend=${encodeURIComponent(
+        `${backend_url}/proxy${path}?backend=${encodeURIComponent(
           backendUrl
         )}&requestId=${requestId}`
     );
 
+    if (/return\s/.test(modifiedCode)) {
+      setWidth(1);
+    } else {
+      setWidth(0);
+    }
+
     // Send to backend for bundling
     try {
-      const res = await fetch("http://localhost:8080/bundle", {
+      const res = await fetch(`${backend_url}/bundle`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: modifiedCode }),
@@ -60,7 +81,7 @@ def data():
         <html>
           <body>
             <div id="root"></div>
-            <script src="http://localhost:8080${data.url}"></script>
+            <script src="${backend_url}${data.url}"></script>
           </body>
         </html>`;
         const blob = new Blob([html], { type: "text/html" });
@@ -70,16 +91,14 @@ def data():
         if (iframe) {
           iframe.src = url;
         }
-         if (intervalRef.current) {
+        if (intervalRef.current) {
           clearInterval(intervalRef.current);
         }
 
         // Start new interval to check status
         intervalRef.current = window.setInterval(async () => {
           try {
-            const statusRes = await fetch(
-              `http://localhost:8080/status/${requestId}`
-            );
+            const statusRes = await fetch(`${backend_url}/status/${requestId}`);
             const statusData = await statusRes.json();
             setStatus(statusData.status);
 
@@ -107,7 +126,8 @@ def data():
   };
 
   const handleDeployBackend = async () => {
-    const res = await fetch("http://localhost:8080/run-backend", {
+    setBackendUrl("");
+    const res = await fetch(`${backend_url}/run-backend`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code: backendCode }),
@@ -116,42 +136,63 @@ def data():
     const data = await res.json();
     if (data.url) {
       setBackendUrl(data.url);
-      alert("Backend is running at: " + data.url);
     } else {
-      alert("Backend error: " + JSON.stringify(data));
+      setError("Error deploying backend");
     }
   };
 
   return (
-    <div>
-      <FrontendEditor code={frontendCode} setCode={setFrontendCode} />
-      <BackendEditor code={backendCode} setCode={setBackendCode} />
+    <div className="mt-3">
+      <div className="flex flex-col">
+        <div className="flex justify-center w-full">
+          {error && <div className="text-red-500">{error}</div>}
+          <div
+            className={`px-4 py-1 rounded-md text-white ${
+              status === "CORS Error" || status === "Other Error"
+                ? "bg-red-500"
+                : status === "Connection OK"
+                ? "bg-green-500"
+                : ""
+            }`}
+          >
+            {status}
+          </div>
+        </div>
+        <div className="flex flex-row pt-4">
+          <div className={` mt-2 ${frameWidth > 0 ? "w-1/3" : "w-1/2"}`}>
+            <button
+              onClick={run}
+              className="ml-3 border-1 px-3 py-1 rounded-sm bg-blue-500 text-white focus:bg-black"
+            >
+              Run Frontend
+            </button>
+            <FrontendEditor
+              code={frontendCode}
+              setCode={setFrontendCode}
+              setUrl={setFrontendUrl}
+            />
+          </div>
+          <div className={` mt-2 ${frameWidth > 0 ? "w-1/3" : "w-1/2"}`}>
+            <button
+              onClick={handleDeployBackend}
+              className="ml-3 border-1 px-3 py-1 rounded-sm bg-blue-500 text-white focus:bg-black"
+            >
+              Deploy Backend
+            </button>
+            <BackendEditor
+              code={backendCode}
+              setCode={setBackendCode}
+              backendUrl={backendUrl}
+            />
+          </div>
 
-      <div style={{ margin: "10px 0" }}>
-        <input
-          type="text"
-          value={backendUrl}
-          onChange={(e) => setBackendUrl(e.target.value)}
-          placeholder="Paste backend URL here"
-          style={{ width: "80%" }}
-        />
-        <button onClick={run}>Run Frontend</button>
-        <button onClick={handleDeployBackend}>Deploy Backend</button>
-
-        <iframe
-          id="preview"
-          title="Preview"
-          src=""
-          style={{
-            width: "100%",
-            height: "400px",
-            border: "1px solid #ccc",
-            marginTop: "10px",
-          }}
-        />
-      </div>
-      <div>
-        {status}
+          <iframe
+            id="preview"
+            title="Preview"
+            src=""
+            className={`border mt-2 ${frameWidth > 0 ? "w-1/3" : "hidden"}`}
+          />
+        </div>
       </div>
     </div>
   );

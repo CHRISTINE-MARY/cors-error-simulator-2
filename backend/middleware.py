@@ -48,4 +48,4 @@ def proxy(path):
 
 def get_status(request_id):
     print("dfdg",request_statuses.get(request_id))
-    return jsonify({"status": request_statuses.get(request_id, "Unknown or Pending")})
+    return jsonify({"status": request_statuses.get(request_id, "Unknown")})
