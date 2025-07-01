@@ -7,8 +7,8 @@ WORKDIR /app
 # Copy the app code from host to the container
 COPY . .
 
-# Install Flask and flask-cors
-RUN pip install flask flask-cors
+
+RUN pip install -r requirements.txt
 
 # Start the Flask app
 CMD ["python", "app.py"]
