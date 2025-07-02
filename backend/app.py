@@ -4,10 +4,6 @@ from flask_cors import CORS
 import uuid
 import os
 import subprocess
-from middleware import proxy,get_status
-import threading
-import time
-import shutil
 from datetime import datetime, timedelta
 
 CLEANUP_INTERVAL = 300 # Run every 5 minutes
