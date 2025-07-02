@@ -20,15 +20,31 @@ esbuild = os.path.abspath("node_modules/.bin/esbuild.cmd")
 app = Flask(__name__)
 CORS(app)
 
-@app.route("/proxy/<path:path>", methods=["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"])
-def proxy_route(path):
-    return proxy(path)
+# @app.route("/proxy/<path:path>", methods=["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"])
+# def proxy_route(path):
+#     return proxy(path)
 
 
-@app.route("/status/<request_id>")
-def status_route(request_id):
-    print("requested",request_id)
-    return get_status(request_id)
+# @app.route("/status/<request_id>")
+# def status_route(request_id):
+#     print("requested",request_id)
+#     return get_status(request_id)
+
+
+# @app.route("/update-code", methods=["POST"])
+# def update_code():
+#     code = request.json.get("code")
+#     if not code:
+#         return {"error": "no code"}, 400
+
+#     with open("app.py", "w") as f:
+#         f.write(code)
+
+#     # This restarts the repl to reload the new code
+#     subprocess.Popen(["kill", "1"])  # Replit restarts on PID 1 death
+#     return {"status": "restarting"}
+
+
 
 @app.route("/bundle", methods=["POST"])
 def bundle_react_code():
@@ -95,65 +111,65 @@ def remove_main_block(code):
     return code
 
 
-@app.route("/run-backend", methods=["POST"])
-def run_backend():
-    user_code = request.json.get("code")
-    if not user_code:
-        return jsonify({"error": "No code provided"}), 400
+# @app.route("/run-backend", methods=["POST"])
+# def run_backend():
+#     user_code = request.json.get("code")
+#     if not user_code:
+#         return jsonify({"error": "No code provided"}), 400
 
     
-    folder_path = f"./runs/docker"
-    os.makedirs(folder_path, exist_ok=True)
+#     folder_path = f"./runs/docker"
+#     os.makedirs(folder_path, exist_ok=True)
 
-    code=remove_main_block(user_code)
-    with open(f"{folder_path}/app.py", "w", encoding="utf-8") as f:
-        # Force app.run at the end of user-submitted code
-        f.write(code + '\n\nif __name__ == "__main__":\n    app.run(host="0.0.0.0", port=5000)')
+#     code=remove_main_block(user_code)
+#     with open(f"{folder_path}/app.py", "w", encoding="utf-8") as f:
+#         # Force app.run at the end of user-submitted code
+#         f.write(code + '\n\nif __name__ == "__main__":\n    app.run(host="0.0.0.0", port=5000)')
 
     
-    container_name = f"backend_docker"
+#     container_name = f"backend_docker"
 
-    subprocess.run(["docker", "rm", "-f", container_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#     subprocess.run(["docker", "rm", "-f", container_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    subprocess.run([
-        "docker", "run", "-d",
-        "-v", f"{os.path.abspath(folder_path)}:/app",
-        "-p", f"5000:5000",
-        "--name", container_name,
-        "flask-runner"
-    ])
+#     subprocess.run([
+#         "docker", "run", "-d",
+#         "-v", f"{os.path.abspath(folder_path)}:/app",
+#         "-p", f"5000:5000",
+#         "--name", container_name,
+#         "flask-runner"
+#     ])
 
-    return jsonify({"url": f"http://localhost:5000"})
+#     return jsonify({"url": f"http://localhost:5000"})
 
 
-def cleanup_old_folders():
-    while True:
-        now = datetime.now()
+# def cleanup_old_folders():
+#     while True:
+#         now = datetime.now()
 
-        for root_folder in ["user_bundles", "runs"]:
-            full_path = os.path.abspath(root_folder)
-            if not os.path.exists(full_path):
-                continue
+#         for root_folder in ["user_bundles", "runs"]:
+#             full_path = os.path.abspath(root_folder)
+#             if not os.path.exists(full_path):
+#                 continue
 
-            for folder_name in os.listdir(full_path):
-                folder_path = os.path.join(full_path, folder_name)
-                try:
-                    modified_time = datetime.fromtimestamp(os.path.getmtime(folder_path))
-                    if now - modified_time > LIFETIME:
-                        shutil.rmtree(folder_path)
+#             for folder_name in os.listdir(full_path):
+#                 folder_path = os.path.join(full_path, folder_name)
+#                 try:
+#                     modified_time = datetime.fromtimestamp(os.path.getmtime(folder_path))
+#                     if now - modified_time > LIFETIME:
+#                         shutil.rmtree(folder_path)
 
                         
-                        if root_folder == "runs":
-                            container_name = f"backend_{folder_name}"
-                            subprocess.run(["docker", "rm", "-f", container_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+#                         if root_folder == "runs":
+#                             container_name = f"backend_{folder_name}"
+#                             subprocess.run(["docker", "rm", "-f", container_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-                except Exception as e:
-                    print(f"[CLEANUP ERROR] {e}")
+#                 except Exception as e:
+#                     print(f"[CLEANUP ERROR] {e}")
 
-        time.sleep(CLEANUP_INTERVAL)
+#         time.sleep(CLEANUP_INTERVAL)
 
-# Start the cleanup thread
-threading.Thread(target=cleanup_old_folders, daemon=True).start()
+# # Start the cleanup thread
+# threading.Thread(target=cleanup_old_folders, daemon=True).start()
 
 
 
