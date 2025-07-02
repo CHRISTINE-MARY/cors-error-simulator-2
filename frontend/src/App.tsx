@@ -133,6 +133,7 @@ def data():
 
   const handleDeployBackend = async () => {
     deploy(false);
+    setError("");
     try{
     const res = await fetch(`${replit_url}/update-code`, {
       method: "POST",
@@ -150,8 +151,8 @@ def data():
     <div className="mt-3">
       <div className="flex flex-col">
         <div className="flex justify-center w-full">
-          {error && <div className="text-red-500">{error}</div>}
-          <div
+          {error ?( <div className="text-red-500">{error}</div>):(
+            <div
             className={`px-4 py-1 rounded-md text-white ${
               status === "CORS Error" || status === "Other Error"
                 ? "bg-red-500"
@@ -162,6 +163,8 @@ def data():
           >
             {status}
           </div>
+          )}
+          
         </div>
         <div className="flex flex-row pt-4">
           <div className={` mt-2 ${frameWidth > 0 ? "w-1/3" : "w-1/2"}`}>

@@ -10,7 +10,7 @@ CLEANUP_INTERVAL = 300 # Run every 5 minutes
 LIFETIME = timedelta(minutes=30)
 
 
-esbuild = os.path.abspath("node_modules/.bin/esbuild.cmd")
+esbuild = os.path.abspath("node_modules/.bin/esbuild")
 
 
 app = Flask(__name__)
